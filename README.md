@@ -1,5 +1,5 @@
 # Network Widgets
-If you use `netctl` or another network manager wich doesn't provide any good tray icon or if you want something more native than `nm-applet`, this is for you.
+If you use `netctl` or another network manager which doesn't provide any good tray icon or if you want something more native than `nm-applet`, this is for you.
 
 ![network widgets total](https://dl.dropbox.com/s/i3aljidy8l6v6mh/net_widgets_total.png?dl=0)
 ## How to use
@@ -7,7 +7,7 @@ First of all you should clone repository in your awesome config directory
 ```
 git clone git@github.com:plotnikovanton/net_widgets.git ~/.config/awesome/net_widgets
 ```
-Then, past this in your 'rc.lua'
+Then, paste this in your 'rc.lua'
 ```Lua
 local net_widgets = require("net_widgets")
 ```
