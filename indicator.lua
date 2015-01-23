@@ -11,7 +11,7 @@ local function worker(args)
     local interfaces    = args.interfaces or {"enp2s0"}
     local ICON_DIR      = awful.util.getdir("config").."/net_widgets/icons/"
     local timeout       = args.timeout or 5
-    
+    local font      = args.font or beautiful.font
     
     local connected = false
     local function text_grabber()
@@ -27,12 +27,13 @@ local function worker(args)
                 mac     = string.match(line, "(%x%x:%x%x:%x%x:%x%x:%x%x:%x%x)") or "N/A"
 
                 f:close()
-                msg =   "┌["..i.."]\n"..
+                msg =   "<span font_desc=\""..font.."\">"..
+                        "┌["..i.."]\n"..
                         "├IP:\t"..inet.."\n"..
-                        "└MAC:\t"..mac
+                        "└MAC:\t"..mac.."</span>"
             end
         else
-            msg = "Wired network is disconnected"
+            msg = "<span font_desc=\""..font.."\">Wired network is disconnected</span>"
         end
     
         return msg

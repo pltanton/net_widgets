@@ -14,6 +14,7 @@ local function worker(args)
     local ICON_DIR  = awful.util.getdir("config").."/net_widgets/icons/"
     local interface = args.interface or "wlan0"
     local timeout   = args.timeout or 5
+    local font      = args.font or beautiful.font
         
     local net_icon = wibox.widget.imagebox()
     net_icon:set_image(ICON_DIR.."wireless_na.png")
@@ -71,11 +72,12 @@ local function worker(args)
             
     
             msg = 
+                "<span font_desc=\""..font.."\">"..
                 "┌["..interface.."]\n"..
                 "├ESSID:\t\t"..essid.."\n"..
                 "├IP:\t\t"..inet.."\n"..
                 "├BSSID\t\t"..mac.."\n"..
-                "└Bit rate:\t"..bitrate
+                "└Bit rate:\t"..bitrate.."</span>"
     
         else
             msg = "Wireless network is disconnected"

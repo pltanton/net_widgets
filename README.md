@@ -34,3 +34,5 @@ net_wired = net_widgets.indicator({
 ```
 
 By default `interfaces={"enp2s0"}`, `timeout=5`
+## Tips
+You can also change font to monospace by `font` option.
