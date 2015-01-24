@@ -24,7 +24,7 @@ local function worker(args)
                 line    = f:read()      -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
                 inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or "N/A"
                 line    = f:read()      -- ether 50:b7:c3:08:37:b7  txqueuelen 1000  (Ethernet)
-                mac     = string.match(line, "(%x%x:%x%x:%x%x:%x%x:%x%x:%x%x)") or "N/A"
+                mac     = string.match(line, "(%x*:%x*:%x*:%x*:%x*:%x*)") or "N/A"
 
                 f:close()
                 msg =   "<span font_desc=\""..font.."\">"..
