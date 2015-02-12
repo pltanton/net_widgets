@@ -35,4 +35,12 @@ net_wired = net_widgets.indicator({
 
 By default `interfaces={"enp2s0"}`, `timeout=5`
 ## Tips
-You can also change font to monospace by `font` option.
+#### Table looks bad
+You can change font to monospace by `font` option.
+
+#### Display the signal strength in the popup instead of next to icon
+![strenght in popup](https://cloud.githubusercontent.com/assets/23966/6146605/a8eba74c-b1bc-11e4-826a-9468edf18009.png)
+
+Set `popup_signal=true`.
+
+
