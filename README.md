@@ -43,4 +43,10 @@ You can change font to monospace by `font` option.
 
 Set `popup_signal=true`.
 
+#### Use `iw` and `ip` command instead `iwconfig` and `ipconfig`
+Set `command_mode="newer"`.
+
+When "newer" is set, `iw` and `ip` are used.
+When it isn't so, `iwconfig` and `ipconfig` are used.
+
 
