@@ -8,25 +8,38 @@ local function worker(args)
     local args = args or {}
     local widget = wibox.widget.imagebox()
 
-    local interfaces    = args.interfaces or {"enp2s0"}
-    local ICON_DIR      = awful.util.getdir("config").."/net_widgets/icons/"
-    local timeout       = args.timeout or 5
-    local font      = args.font or beautiful.font
-    
+    local interfaces   = args.interfaces or {"enp2s0"}
+    local ICON_DIR     = awful.util.getdir("config").."/net_widgets/icons/"
+    local timeout      = args.timeout or 5
+    local font         = args.font or beautiful.font
+    local command_mode = args.command_mode or "default" -- now implemented, "default" or "newer"
+
     local connected = false
     local function text_grabber()
         local msg = ""
         if connected then
-            for _, i in pairs(interfaces) do            
-                f = io.popen("ifconfig "..i)
-            
-                line    = f:read()      -- wlp1s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500 
-                line    = f:read()      -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
-                inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or "N/A"
-                line    = f:read()      -- ether 50:b7:c3:08:37:b7  txqueuelen 1000  (Ethernet)
-                mac     = string.match(line, "(%x*:%x*:%x*:%x*:%x*:%x*)") or "N/A"
+            for _, i in pairs(interfaces) do
+                if command_mode == "newer" then
+                    f = io.popen("ip addr show "..i)
 
-                f:close()
+                    line    = f:read() or ""    -- 3: wlp1s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+                    line    = f:read() or ""    -- link/ether 5c:51:4f:d6:d1:c5 brd ff:ff:ff:ff:ff:ff
+                    mac     = string.match(line, "link/ether (%x%x:%x%x:%x%x:%x%x:%x%x:%x%x)") or "N/A"
+                    line    = f:read() or ""    -- inet 192.168.1.17/24 brd 192.168.1.255 scope global enp3s0
+                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or " N/A "
+
+                    f:close()
+                else
+                    f = io.popen("ifconfig "..i)
+
+                    line    = f:read()      -- wlp1s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+                    line    = f:read()      -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
+                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or "N/A"
+                    line    = f:read()      -- ether 50:b7:c3:08:37:b7  txqueuelen 1000  (Ethernet)
+                    mac     = string.match(line, "(%x*:%x*:%x*:%x*:%x*:%x*)") or "N/A"
+
+                    f:close()
+                end
                 msg =   "<span font_desc=\""..font.."\">"..
                         "┌["..i.."]\n"..
                         "├IP:\t"..inet.."\n"..
@@ -35,16 +48,15 @@ local function worker(args)
         else
             msg = "<span font_desc=\""..font.."\">Wired network is disconnected</span>"
         end
-    
+
         return msg
     end
-    
-    
+
     widget:set_image(ICON_DIR.."wired_na.png")
     local function net_update()
         connected = false
         for _, i in pairs(interfaces) do
-            state = awful.util.pread("ip link show "..i.." | awk 'NR==1 {printf \"%s\", $9}'")    
+            state = awful.util.pread("ip link show "..i.." | awk 'NR==1 {printf \"%s\", $9}'")
             if (state == "UP") then
                 connected = true
             end
@@ -55,15 +67,15 @@ local function worker(args)
             end
         end
     end
-    
+
     net_update()
-    
+
     local net_timer = timer({ timeout = timeout })
     net_timer:connect_signal("timeout", net_update)
     net_timer:start()
-    
+
     local notification = nil
-    function widget:hide() 
+    function widget:hide()
         if notification ~= nil then
             naughty.destroy(notification)
             notification = nil
@@ -72,7 +84,7 @@ local function worker(args)
 
     function widget:show(t_out)
         widget:hide()
-    
+
         notification = naughty.notify({
             preset = fs_notification_preset,
             text = text_grabber(),
