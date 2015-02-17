@@ -59,46 +59,46 @@ local function worker(args)
     local function text_grabber()
         local msg = ""
         if connected then
+            local mac     = "N/A"
+            local essid   = "N/A"
+            local bitrate = "N/A"
+            local inet    = "N/A"
             if command_mode == "newer" then
                 -- Use iw/ip
                 f = io.popen("iw dev "..interface.." link")
-                line    = f:read() or "" -- Connected to 00:01:8e:11:45:ac (on wlp1s0)
-                mac     = string.match(line, "Connected to ([0-f:]+)") or " N/A "
-                line    = f:read() or "" -- SSID: 00018E1145AC
-                essid   = string.match(line, "SSID: (.+)") or " N/A "
-                line    = f:read() or "" -- freq: 2437
-                line    = f:read() or "" -- RX: 363317 bytes (1223 packets)
-                line    = f:read() or "" -- TX: 33835 bytes (231 packets)
-                line    = f:read() or "" -- signal: -46 dBm
-                line    = f:read() or "" -- tx bitrate: 36.0 MBit/s
-                bitrate = string.match(line, "tx bitrate: (.+/s)") or " N/A "
-
+                for line in f:lines() do
+                    -- Connected to 00:01:8e:11:45:ac (on wlp1s0)
+                    mac     = string.match(line, "Connected to ([0-f:]+)") or mac
+                    -- SSID: 00018E1145AC
+                    essid   = string.match(line, "SSID: (.+)") or essid
+                    -- tx bitrate: 36.0 MBit/s
+                    bitrate = string.match(line, "tx bitrate: (.+/s)") or bitrate
+                end
                 f:close()
+
                 f = io.popen("ip addr show "..interface)
-
-                line    = f:read() or ""    -- 3: wlp1s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
-                line    = f:read() or ""    -- link/ether 5c:51:4f:d6:d1:c5 brd ff:ff:ff:ff:ff:ff
-                line    = f:read() or ""    -- inet 192.168.1.17/24 brd 192.168.1.255 scope global wlp3s0
-                inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or " N/A "
-
+                for line in f:lines() do
+                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
+                end
                 f:close()
             else -- "default" and the others
                 -- Use iwconfig/ipconfig
                 f = io.popen("iwconfig "..interface)
-                line    = f:read() or ""    -- wlp1s0    IEEE 802.11abgn  ESSID:"ESSID"
-                essid   = string.match(line, "ESSID:\"(.+)\"") or " N/A "
-                line    = f:read() or ""    -- Mode:Managed  Frequency:2.437 GHz  Access Point: aa:bb:cc:dd:ee:ff
-                mac     = string.match(line, "Access Point: (.+)") or " N/A "
-                line    = f:read() or ""    -- Bit Rate=36 Mb/s   Tx-Power=15 dBm
-                bitrate = string.match(line, "Bit Rate=(.+/s)") or " N/A "
+                for line in f:lines() do
+                    -- wlp1s0    IEEE 802.11abgn  ESSID:"ESSID"
+                    essid   = string.match(line, "ESSID:\"(.+)\"") or essid
+                    -- Mode:Managed  Frequency:2.437 GHz  Access Point: aa:bb:cc:dd:ee:ff
+                    mac     = string.match(line, "Access Point: (.+)") or mac
+                    -- Bit Rate=36 Mb/s   Tx-Power=15 dBm
+                    bitrate = string.match(line, "Bit Rate=(.+/s)") or bitrate
+                end
 
                 f:close()
                 f = io.popen("ifconfig "..interface)
-
-                line    = f:read() or ""    -- wlp1s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-                line    = f:read() or ""    -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
-                inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or " N/A "
-
+                for line in f:lines() do
+                    -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
+                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
+                end
                 f:close()
             end
 
