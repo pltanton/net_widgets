@@ -2,18 +2,19 @@ local wibox         = require("wibox")
 local awful         = require("awful")
 local beautiful     = require("beautiful")
 local naughty       = require("naughty")
+local module_path = (...):match ("(.+/)[^/]+$") or ""
 
 local indicator = {}
 local function worker(args)
     local args = args or {}
     local widget = wibox.widget.imagebox()
 
-    local interfaces   = args.interfaces or {"enp2s0"}
-    local ICON_DIR     = awful.util.getdir("config").."/net_widgets/icons/"
-    local timeout      = args.timeout or 5
-    local font         = args.font or beautiful.font
-    local command_mode = args.command_mode or "default" -- now implemented, "default" or "newer"
-
+    local interfaces    = args.interfaces or {"enp2s0"}
+    local ICON_DIR      = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
+    local timeout       = args.timeout or 5
+    local font          = args.font or beautiful.font
+    local command_mode  = args.command_mode or "default" -- now implemented, "default" or "newer"
+    
     local connected = false
     local function text_grabber()
         local msg = ""
