@@ -2,6 +2,7 @@ local wibox         = require("wibox")
 local awful         = require("awful")
 local beautiful     = require("beautiful")
 local naughty       = require("naughty")
+local module_path = (...):match ("(.+/)[^/]+$") or ""
 
 local wireless = {}
 local function worker(args)
@@ -11,7 +12,7 @@ local function worker(args)
     local connected = false
 
     -- Settings
-    local ICON_DIR     = awful.util.getdir("config").."/net_widgets/icons/"
+    local ICON_DIR     = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
     local interface    = args.interface or "wlan0"
     local timeout      = args.timeout or 5
     local font         = args.font or beautiful.font
