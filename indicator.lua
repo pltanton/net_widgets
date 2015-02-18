@@ -20,25 +20,25 @@ local function worker(args)
         local msg = ""
         if connected then
             for _, i in pairs(interfaces) do
+                local map  = "N/A"
+                local inet = "N/A"
                 if command_mode == "newer" then
                     f = io.popen("ip addr show "..i)
-
-                    line    = f:read() or ""    -- 3: wlp1s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
-                    line    = f:read() or ""    -- link/ether 5c:51:4f:d6:d1:c5 brd ff:ff:ff:ff:ff:ff
-                    mac     = string.match(line, "link/ether (%x%x:%x%x:%x%x:%x%x:%x%x:%x%x)") or "N/A"
-                    line    = f:read() or ""    -- inet 192.168.1.17/24 brd 192.168.1.255 scope global enp3s0
-                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or " N/A "
-
+                    for line in f:lines() do
+                        -- inet 192.168.1.190/24 brd 192.168.1.255 scope global enp3s0
+                        inet = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
+                        -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+                        mac  = string.match(line, "link/ether (%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?)") or mac
+                    end
                     f:close()
                 else
                     f = io.popen("ifconfig "..i)
-
-                    line    = f:read()      -- wlp1s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-                    line    = f:read()      -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
-                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or "N/A"
-                    line    = f:read()      -- ether 50:b7:c3:08:37:b7  txqueuelen 1000  (Ethernet)
-                    mac     = string.match(line, "(%x*:%x*:%x*:%x*:%x*:%x*)") or "N/A"
-
+                    for line in f:lines() do
+                        -- wlp1s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+                        inet = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
+                        -- ether 50:b7:c3:08:37:b7  txqueuelen 1000  (Ethernet)
+                        mac  = string.match(line, "ether (%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?)") or map
+                    end
                     f:close()
                 end
                 msg =   "<span font_desc=\""..font.."\">"..
