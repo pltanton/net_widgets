@@ -42,11 +42,3 @@ You can change font to monospace by `font` option.
 ![strenght in popup](https://cloud.githubusercontent.com/assets/23966/6146605/a8eba74c-b1bc-11e4-826a-9468edf18009.png)
 
 Set `popup_signal=true`.
-
-#### Use `iw` and `ip` command instead `iwconfig` and `ipconfig`
-Set `command_mode="newer"`.
-
-When "newer" is set, `iw` and `ip` are used.
-When it isn't so, `iwconfig` and `ipconfig` are used.
-
-

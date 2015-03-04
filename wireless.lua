@@ -17,7 +17,6 @@ local function worker(args)
     local timeout      = args.timeout or 5
     local font         = args.font or beautiful.font
     local popup_signal = args.popup_signal or false
-    local command_mode = args.command_mode or "default" -- now implemented, "default" or "newer"
 
     local net_icon = wibox.widget.imagebox()
     net_icon:set_image(ICON_DIR.."wireless_na.png")
@@ -63,44 +62,24 @@ local function worker(args)
             local essid   = "N/A"
             local bitrate = "N/A"
             local inet    = "N/A"
-            if command_mode == "newer" then
-                -- Use iw/ip
-                f = io.popen("iw dev "..interface.." link")
-                for line in f:lines() do
-                    -- Connected to 00:01:8e:11:45:ac (on wlp1s0)
-                    mac     = string.match(line, "Connected to ([0-f:]+)") or mac
-                    -- SSID: 00018E1145AC
-                    essid   = string.match(line, "SSID: (.+)") or essid
-                    -- tx bitrate: 36.0 MBit/s
-                    bitrate = string.match(line, "tx bitrate: (.+/s)") or bitrate
-                end
-                f:close()
-
-                f = io.popen("ip addr show "..interface)
-                for line in f:lines() do
-                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
-                end
-                f:close()
-            else -- "default" and the others
-                -- Use iwconfig/ipconfig
-                f = io.popen("iwconfig "..interface)
-                for line in f:lines() do
-                    -- wlp1s0    IEEE 802.11abgn  ESSID:"ESSID"
-                    essid   = string.match(line, "ESSID:\"(.+)\"") or essid
-                    -- Mode:Managed  Frequency:2.437 GHz  Access Point: aa:bb:cc:dd:ee:ff
-                    mac     = string.match(line, "Access Point: (.+)") or mac
-                    -- Bit Rate=36 Mb/s   Tx-Power=15 dBm
-                    bitrate = string.match(line, "Bit Rate=(.+/s)") or bitrate
-                end
-
-                f:close()
-                f = io.popen("ifconfig "..interface)
-                for line in f:lines() do
-                    -- inet 192.168.1.15  netmask 255.255.255.0  broadcast 192.168.1.255
-                    inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
-                end
-                f:close()
+                
+            -- Use iw/ip
+            f = io.popen("iw dev "..interface.." link")
+            for line in f:lines() do
+                -- Connected to 00:01:8e:11:45:ac (on wlp1s0)
+                mac     = string.match(line, "Connected to ([0-f:]+)") or mac
+                -- SSID: 00018E1145AC
+                essid   = string.match(line, "SSID: (.+)") or essid
+                -- tx bitrate: 36.0 MBit/s
+                bitrate = string.match(line, "tx bitrate: (.+/s)") or bitrate
             end
+            f:close()
+
+            f = io.popen("ip addr show "..interface)
+            for line in f:lines() do
+                inet    = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
+            end
+            f:close()
 
             signal = ""
             if popup_signal then

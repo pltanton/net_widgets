@@ -13,34 +13,24 @@ local function worker(args)
     local ICON_DIR      = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
     local timeout       = args.timeout or 5
     local font          = args.font or beautiful.font
-    local command_mode  = args.command_mode or "default" -- now implemented, "default" or "newer"
     
     local connected = false
     local function text_grabber()
         local msg = ""
         if connected then
             for _, i in pairs(interfaces) do
+                
                 local map  = "N/A"
                 local inet = "N/A"
-                if command_mode == "newer" then
-                    f = io.popen("ip addr show "..i)
-                    for line in f:lines() do
-                        -- inet 192.168.1.190/24 brd 192.168.1.255 scope global enp3s0
-                        inet = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
-                        -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
-                        mac  = string.match(line, "link/ether (%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?)") or mac
-                    end
-                    f:close()
-                else
-                    f = io.popen("ifconfig "..i)
-                    for line in f:lines() do
-                        -- wlp1s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
-                        inet = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
-                        -- ether 50:b7:c3:08:37:b7  txqueuelen 1000  (Ethernet)
-                        mac  = string.match(line, "ether (%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?)") or map
-                    end
-                    f:close()
+                f = io.popen("ip addr show "..i)
+                for line in f:lines() do
+                    -- inet 192.168.1.190/24 brd 192.168.1.255 scope global enp3s0
+                    inet = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
+                    -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+                    mac  = string.match(line, "link/ether (%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?)") or mac
                 end
+                f:close()
+                
                 msg =   "<span font_desc=\""..font.."\">"..
                         "┌["..i.."]\n"..
                         "├IP:\t"..inet.."\n"..
