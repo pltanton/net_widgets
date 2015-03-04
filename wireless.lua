@@ -12,11 +12,12 @@ local function worker(args)
     local connected = false
 
     -- Settings
-    local ICON_DIR     = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
-    local interface    = args.interface or "wlan0"
-    local timeout      = args.timeout or 5
-    local font         = args.font or beautiful.font
-    local popup_signal = args.popup_signal or false
+    local ICON_DIR      = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
+    local interface     = args.interface or "wlan0"
+    local timeout       = args.timeout or 5
+    local font          = args.font or beautiful.font
+    local popup_signal  = args.popup_signal or false
+    local onclick       = args.onclick
 
     local net_icon = wibox.widget.imagebox()
     net_icon:set_image(ICON_DIR.."wireless_na.png")
@@ -118,6 +119,13 @@ local function worker(args)
             text = text_grabber(),
             timeout = t_out,
         })
+    end
+
+    -- Bind onclick event function
+    if onclick then
+        widget:buttons(awful.util.table.join(
+            awful.button({}, 1, function() awful.util.spawn(onclick) end)
+        ))
     end
 
     widget:connect_signal('mouse::enter', function () widget:show(0) end)

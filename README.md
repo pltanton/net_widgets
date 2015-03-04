@@ -42,3 +42,11 @@ You can change font to monospace by `font` option.
 ![strenght in popup](https://cloud.githubusercontent.com/assets/23966/6146605/a8eba74c-b1bc-11e4-826a-9468edf18009.png)
 
 Set `popup_signal=true`.
+
+#### Set action on click
+Just set `onclick` argument, for example
+
+```Lua
+net_wireless = net_widgets.wireless({interface   = "wlp3s0", 
+                                     onclick     = terminal .. " -e sudo wifi-menu" }) 
+```

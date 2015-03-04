@@ -9,11 +9,13 @@ local function worker(args)
     local args = args or {}
     local widget = wibox.widget.imagebox()
 
+    -- Settings
     local interfaces    = args.interfaces or {"enp2s0"}
     local ICON_DIR      = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
     local timeout       = args.timeout or 5
     local font          = args.font or beautiful.font
-    
+    local onclick       = args.onclick 
+
     local connected = false
     local function text_grabber()
         local msg = ""
@@ -83,6 +85,13 @@ local function worker(args)
         })
     end
 
+    -- Bind onclick event function
+    if onclick then
+        widget:buttons(awful.util.table.join(
+            awful.button({}, 1, function() awful.util.spawn(onclick) end)
+        ))
+    end
+    
     widget:connect_signal('mouse::enter', function () widget:show(0) end)
     widget:connect_signal('mouse::leave', function () widget:hide() end)
     return widget
