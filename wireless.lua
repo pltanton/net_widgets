@@ -18,7 +18,7 @@ local function worker(args)
     local font          = args.font or beautiful.font
     local popup_signal  = args.popup_signal or false
     local onclick       = args.onclick
-    local widget 	= args.widget == nil and wibox.layout.fixed.horizontal() or nil
+    local widget 	= args.widget == nil and wibox.layout.fixed.horizontal() or args.widget == false and nil or args.widget
     local indent 	= args.indent or 3
 
     local net_icon = wibox.widget.imagebox()
