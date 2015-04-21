@@ -7,14 +7,16 @@ local module_path = (...):match ("(.+/)[^/]+$") or ""
 local indicator = {}
 local function worker(args)
     local args = args or {}
-    local widget = wibox.widget.imagebox()
-
+    local widget = wibox.widget.background()
+    local wired = wibox.widget.imagebox()
+    local wired_na = wibox.widget.imagebox()
     -- Settings
     local interfaces    = args.interfaces or {"enp2s0"}
     local ICON_DIR      = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
     local timeout       = args.timeout or 5
     local font          = args.font or beautiful.font
     local onclick       = args.onclick 
+    local hidedisconnected = args.hidedisconnected 
 
     local connected = false
     local function text_grabber()
@@ -45,7 +47,9 @@ local function worker(args)
         return msg
     end
 
-    widget:set_image(ICON_DIR.."wired_na.png")
+    wired:set_image(ICON_DIR.."wired.png")
+    wired_na:set_image(ICON_DIR.."wired_na.png")
+    widget:set_widget(wired_na)
     local function net_update()
         connected = false
         for _, i in pairs(interfaces) do
@@ -53,12 +57,16 @@ local function worker(args)
             if (state == "UP") then
                 connected = true
             end
-            if connected then
-                widget:set_image(ICON_DIR.."wired.png")
-            else
-                widget:set_image(ICON_DIR.."wired_na.png")
-            end
-        end
+	    if connected then
+		    widget:set_widget(wired)
+	    else
+		    if not hidedisconnected then
+			    widget:set_widget(wired_na)
+		    else
+			    widget:set_widget(nil)
+		    end
+	    end
+    end
     end
 
     net_update()
@@ -69,29 +77,29 @@ local function worker(args)
 
     local notification = nil
     function widget:hide()
-        if notification ~= nil then
-            naughty.destroy(notification)
-            notification = nil
-        end
+	    if notification ~= nil then
+		    naughty.destroy(notification)
+		    notification = nil
+	    end
     end
 
     function widget:show(t_out)
-        widget:hide()
+	    widget:hide()
 
-        notification = naughty.notify({
-            preset = fs_notification_preset,
-            text = text_grabber(),
-            timeout = t_out,
-        })
+	    notification = naughty.notify({
+		    preset = fs_notification_preset,
+		    text = text_grabber(),
+		    timeout = t_out,
+	    })
     end
 
     -- Bind onclick event function
     if onclick then
-        widget:buttons(awful.util.table.join(
-            awful.button({}, 1, function() awful.util.spawn(onclick) end)
-        ))
+	    widget:buttons(awful.util.table.join(
+	    awful.button({}, 1, function() awful.util.spawn(onclick) end)
+	    ))
     end
-    
+
     widget:connect_signal('mouse::enter', function () widget:show(0) end)
     widget:connect_signal('mouse::leave', function () widget:hide() end)
     return widget

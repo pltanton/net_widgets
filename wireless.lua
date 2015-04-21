@@ -8,7 +8,7 @@ local wireless = {}
 local function worker(args)
     local args = args or {}
 
-    local widget = wibox.layout.fixed.horizontal()
+    widgets_table = {}
     local connected = false
 
     -- Settings
@@ -18,6 +18,8 @@ local function worker(args)
     local font          = args.font or beautiful.font
     local popup_signal  = args.popup_signal or false
     local onclick       = args.onclick
+    local widget 	= args.widget == nil and wibox.layout.fixed.horizontal() or args.widget == false and nil or args.widget
+    local indent 	= args.indent or 3
 
     local net_icon = wibox.widget.imagebox()
     net_icon:set_image(ICON_DIR.."wireless_na.png")
@@ -33,7 +35,7 @@ local function worker(args)
             net_icon:set_image(ICON_DIR.."wireless_na.png")
         else
             connected = true
-            net_text:set_text(string.format("%3d%%", signal_level))
+            net_text:set_text(string.format("%"..indent.."d%%", signal_level))
             if signal_level < 25 then
                 net_icon:set_image(ICON_DIR.."wireless_0.png")
             elseif signal_level < 50 then
@@ -49,12 +51,19 @@ local function worker(args)
     net_update()
     net_timer:connect_signal("timeout", net_update)
     net_timer:start()
-
-    widget:add(net_icon)
-    -- Hide the text when we want to popup the signal instead
-    if not popup_signal then
-        widget:add(net_text)
+    
+    widgets_table["imagebox"]	= net_icon
+    widgets_table["textbox"]	= net_text
+    if widget then
+	    widget:add(net_icon)
+	    -- Hide the text when we want to popup the signal instead
+	    if not popup_signal then
+		    widget:add(net_text)
+	    end
+	    wireless:attach(widget,{onclick = onclick})
     end
+
+
 
     local function text_grabber()
         local msg = ""
@@ -104,33 +113,36 @@ local function worker(args)
     end
 
     local notification = nil
-    function widget:hide()
-        if notification ~= nil then
-            naughty.destroy(notification)
-            notification = nil
-        end
+    function wireless:hide()
+	    if notification ~= nil then
+		    naughty.destroy(notification)
+		    notification = nil
+	    end
     end
 
-    function widget:show(t_out)
-        widget:hide()
+    function wireless:show(t_out)
+	    wireless:hide()
 
-        notification = naughty.notify({
-            preset = fs_notification_preset,
-            text = text_grabber(),
-            timeout = t_out,
-        })
+	    notification = naughty.notify({
+		    preset = fs_notification_preset,
+		    text = text_grabber(),
+		    timeout = t_out,
+	    })
     end
+    return widget or widgets_table
+end
 
+function wireless:attach(widget, args)
+    local args = args or {}
+    local onclick = args.onclick
     -- Bind onclick event function
     if onclick then
-        widget:buttons(awful.util.table.join(
-            awful.button({}, 1, function() awful.util.spawn(onclick) end)
-        ))
+	    widget:buttons(awful.util.table.join(
+	    awful.button({}, 1, function() awful.util.spawn(onclick) end)
+	    ))
     end
-
-    widget:connect_signal('mouse::enter', function () widget:show(0) end)
-    widget:connect_signal('mouse::leave', function () widget:hide() end)
-    return widget
+    widget:connect_signal('mouse::enter', function () wireless:show(0) end)
+    widget:connect_signal('mouse::leave', function () wireless:hide() end)
 end
 
 return setmetatable(wireless, {__call = function(_,...) return worker(...) end})
