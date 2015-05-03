@@ -127,6 +127,7 @@ local function worker(args)
 		    preset = fs_notification_preset,
 		    text = text_grabber(),
 		    timeout = t_out,
+            screen = mouse.screen
 	    })
     end
     return widget or widgets_table
