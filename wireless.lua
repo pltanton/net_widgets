@@ -144,6 +144,7 @@ function wireless:attach(widget, args)
     end
     widget:connect_signal('mouse::enter', function () wireless:show(0) end)
     widget:connect_signal('mouse::leave', function () wireless:hide() end)
+    return widget
 end
 
 return setmetatable(wireless, {__call = function(_,...) return worker(...) end})
