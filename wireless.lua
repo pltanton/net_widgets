@@ -2,6 +2,7 @@ local wibox         = require("wibox")
 local awful         = require("awful")
 local beautiful     = require("beautiful")
 local naughty       = require("naughty")
+local gears         = require("gears")
 local module_path = (...):match ("(.+/)[^/]+$") or ""
 
 local wireless = {}
@@ -25,10 +26,11 @@ local function worker(args)
     net_icon:set_image(ICON_DIR.."wireless_na.png")
     local net_text = wibox.widget.textbox()
     net_text:set_text(" N/A ")
-    local net_timer = timer({ timeout = timeout })
     local signal_level = 0
     local function net_update()
-        signal_level = tonumber(awful.util.pread("awk 'NR==3 {printf \"%3.0f\" ,($3/70)*100}' /proc/net/wireless"))
+	awful.spawn.easy_async("awk 'NR==3 {printf \"%3.0f\" ,($3/70)*100}' /proc/net/wireless", function(stdout, stderr, reason, exit_code)
+          signal_level = tonumber( stdout )
+        end)
         if signal_level == nil then
             connected = false
             net_text:set_text(" N/A ")
@@ -49,8 +51,8 @@ local function worker(args)
     end
 
     net_update()
-    net_timer:connect_signal("timeout", net_update)
-    net_timer:start()
+    local timer = gears.timer.start_new( timeout, function () net_update()
+      return true end )
     
     widgets_table["imagebox"]	= net_icon
     widgets_table["textbox"]	= net_text
