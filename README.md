@@ -5,7 +5,7 @@ If you use `netctl` or another network manager which doesn't provide any good tr
 ## How to use
 First of all you should clone repository in your awesome config directory
 ```
-git clone git@github.com:plotnikovanton/net_widgets.git ~/.config/awesome/net_widgets
+git clone git@github.com:pltanton/net_widgets.git ~/.config/awesome/net_widgets
 ```
 Then, paste this in your 'rc.lua'
 ```Lua
