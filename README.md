@@ -32,8 +32,18 @@ net_wired = net_widgets.indicator({
     timeout     = 5
 })
 ```
-
 By default `interfaces={"enp2s0"}`, `timeout=5`
+
+### Internet access indicator.
+<!---
+http://imgur.com/a/eGP65
+-->
+![internet widget](http://i.imgur.com/tdJjvPM.png)
+This indicator shows up when there is no internet access (detected by trying to connect to `8.8.8.8`). Set `showconnected` to `true` if you're extra precautionary about your internet connection and don't mind seeing a green check mark almost all the time.
+```Lua
+net_internet = net_widgets.internet({indent = 0, timeout = 5})
+```
+
 ## Tips
 #### Table looks bad
 You can change font to monospace by `font` option.
