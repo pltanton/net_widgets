@@ -32,6 +32,7 @@ net_wired = net_widgets.indicator({
     timeout     = 5
 })
 ```
+
 By default `interfaces={"enp2s0"}`, `timeout=5`
 
 ### Internet access indicator.
