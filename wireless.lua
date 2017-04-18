@@ -18,6 +18,7 @@ local function worker(args)
     local timeout       = args.timeout or 5
     local font          = args.font or beautiful.font
     local popup_signal  = args.popup_signal or false
+    local popup_position = args.popup_position or naughty.config.defaults.position
     local onclick       = args.onclick
     local widget 	= args.widget == nil and wibox.layout.fixed.horizontal() or args.widget == false and nil or args.widget
     local indent 	= args.indent or 3
@@ -129,7 +130,8 @@ local function worker(args)
 		    preset = fs_notification_preset,
 		    text = text_grabber(),
 		    timeout = t_out,
-            screen = mouse.screen
+            screen = mouse.screen,
+            position = popup_position
 	    })
     end
     return widget or widgets_table

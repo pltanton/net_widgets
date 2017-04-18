@@ -86,3 +86,12 @@ net_wireless = net_widgets.wireless({interface   = "wlp3s0",
 
 
 By default `indent = 3`
+
+#### Set the pop-up position
+
+Helpful if the widget is placed on the bottom bar and you want the pop-up to appear near the widget rather than on top of the screen.
+
+```Lua
+net_wireless = net_widgets.wireless({interface   = "wlp3s0",
+                                     popup_position = "bottom_right" })
+```
