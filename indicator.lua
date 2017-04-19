@@ -18,6 +18,7 @@ local function worker(args)
   local font = args.font or beautiful.font
   local onclick = args.onclick
   local hidedisconnected = args.hidedisconnected
+  local popup_position = args.popup_position or naughty.config.defaults.position
 
   local connected = false
   local function text_grabber()
@@ -93,7 +94,8 @@ local function worker(args)
         preset = fs_notification_preset,
         text = text_grabber(),
         timeout = t_out,
-        screen = mouse.screen
+        screen = mouse.screen,
+        position = popup_position
       })
   end
 
