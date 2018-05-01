@@ -26,6 +26,7 @@ local function worker(args)
     local net_icon = wibox.widget.imagebox()
     net_icon:set_image(ICON_DIR.."wireless_na.png")
     local net_text = wibox.widget.textbox()
+    net_text.font = font
     net_text:set_text(" N/A ")
     local signal_level = 0
     local function net_update()
@@ -54,7 +55,7 @@ local function worker(args)
     net_update()
     local timer = gears.timer.start_new( timeout, function () net_update()
       return true end )
-    
+
     widgets_table["imagebox"]	= net_icon
     widgets_table["textbox"]	= net_text
     if widget then
@@ -75,7 +76,7 @@ local function worker(args)
             local essid   = "N/A"
             local bitrate = "N/A"
             local inet    = "N/A"
-                
+
             -- Use iw/ip
             f = io.popen("iw dev "..interface.." link")
             for line in f:lines() do
