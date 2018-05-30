@@ -41,6 +41,10 @@ local function worker(args)
         "┌["..i.."]\n"..
         "├IP:\t"..inet.."\n"..
         "└MAC:\t"..mac.."</span>"
+
+	if int ~= "N/A" then
+	  break
+        end
       end
     else
       msg = "<span font_desc=\""..font.."\">Wired network is disconnected</span>"
