@@ -21,6 +21,8 @@ net_wireless = net_widgets.wireless({interface="wlp1s0"})
 ```
 After that just place `net_wireless` wherever you want. You can also change widget update timeout. By default it is `timeout=5`, `interface=wlan0`
 
+To display metrics about ESSID, bit rate and more, make sure that you have `iw` installed on your system.
+
 ### Wired network indicator.
 ![wired widget](https://dl.dropbox.com/s/5hg1bo41luelzob/wired_icon.png)
 If network is disconnected icon changes color to red. You can set multiple interfaces to indicate it. It also have got popup.
