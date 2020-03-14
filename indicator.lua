@@ -49,30 +49,62 @@ local function worker(args)
   local connected = false
   local function text_grabber()
     local msg = ""
-    if connected then
-      for _, i in pairs(interfaces or get_interfaces()) do
-
-        local mac = "N/A"
-        local inet = "N/A"
-        f = io.popen("ip addr show "..i)
-        for line in f:lines() do
+    for _, i in pairs(interfaces or get_interfaces()) do
+      msg = msg .. "\n<span font_desc=\""..font.."\">┌["..i.."]\n"
+      f = io.popen("ip addr show "..i)
+      for line in f:lines() do
+        inet = string.match(line, "inet ([%d.]+)")
+        if inet then
           -- inet 192.168.1.190/24 brd 192.168.1.255 scope global enp3s0
-          inet = string.match(line, "inet (%d+%.%d+%.%d+%.%d+)") or inet
-          -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
-          mac = string.match(line, "link/ether (%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?:%x?%x?)") or mac
+          msg = msg .. "├IP:\t"..inet.."\n"
+        else
+          mac = string.match(line, "link/ether ([%x:]+)")
+          if mac then
+            -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+            msg = msg .. "├MAC:\t"..mac.."\n"
+          end
         end
-        f:close()
-
-        msg = msg .. "\n<span font_desc=\""..font.."\">"..
-        "┌["..i.."]\n"..
-        "├IP:\t"..inet.."\n"..
-        "└MAC:\t"..mac.."</span>\n"
-
       end
-    else
-      msg = "<span font_desc=\""..font.."\">Wired network is disconnected</span>"
-    end
+      f:close()
 
+      local localrt = {}
+      f = io.popen("ip route")
+      for line in f:lines() do
+        local rt = string.match(line, "^([^%s]+) dev "..i)
+        if rt then
+          -- 10.11.0.0/24 dev tun2 proto kernel scope link src 10.11.0.3
+          if string.match(line, " proto ") then
+            proto = string.match(line, " proto ([^%s]+) ")
+            if not (proto == "kernel") then
+              rt = rt .. " [" .. proto .. "]"
+            end
+          end
+          table.insert(localrt, rt)
+        else
+          rt = string.match(line, "^([^%s]+ via [%d.]+) dev "..i)
+          if rt then
+            -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+            if string.match(line, " proto ") then
+              proto = string.match(line, " proto ([^%s]+) ")
+              if not (proto == "kernel") then
+                rt = rt .. " [" .. proto .. "]"
+              end
+            end
+            msg = msg .. "├RT:\t"..rt.."\n"
+          end
+        end
+      end
+      f:close()
+
+      if (#localrt == 0) then
+        table.insert(localrt, "NO LOCAL ROUTE")
+      end
+      for rt = 1, #localrt - 1 do
+        msg = msg .. "├LOC:\t"..localrt[rt].."\n"
+      end
+      msg = msg .. "└LOC:\t"..localrt[#localrt].."</span>\n"
+
+    end
     return msg
   end
 
