@@ -12,7 +12,8 @@ local function worker(args)
   local wired = wibox.widget.imagebox()
   local wired_na = wibox.widget.imagebox()
   -- Settings
-  local interfaces = args.interfaces or {"enp2s0"}
+  local interfaces = args.interfaces
+  local ignore_interfaces = args.ignore_interfaces or {}
   local ICON_DIR = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
   local timeout = args.timeout or 5
   local font = args.font or beautiful.font
@@ -20,13 +21,38 @@ local function worker(args)
   local hidedisconnected = args.hidedisconnected
   local popup_position = args.popup_position or naughty.config.defaults.position
 
+  local function get_interfaces()
+    local ifaces = {}
+    f = io.popen("ip link")
+    for line in f:lines() do
+      -- 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 [...]
+      --     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+      -- 2: enp3s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 [...]
+      --     link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+      local iface = string.match(line, "^%d+:%s+([%l%d]+):%s+<")
+      if iface then
+        for _, i in pairs(ignore_interfaces) do
+          if (i == iface) then
+            iface = nil
+            break
+          end
+        end
+        if iface then
+          table.insert(ifaces, iface)
+        end
+      end
+    end
+    f:close()
+    return ifaces
+  end
+
   local connected = false
   local function text_grabber()
     local msg = ""
     if connected then
-      for _, i in pairs(interfaces) do
+      for _, i in pairs(interfaces or get_interfaces()) do
 
-        local map = "N/A"
+        local mac = "N/A"
         local inet = "N/A"
         f = io.popen("ip addr show "..i)
         for line in f:lines() do
@@ -37,14 +63,11 @@ local function worker(args)
         end
         f:close()
 
-        msg = "<span font_desc=\""..font.."\">"..
+        msg = msg .. "\n<span font_desc=\""..font.."\">"..
         "┌["..i.."]\n"..
         "├IP:\t"..inet.."\n"..
-        "└MAC:\t"..mac.."</span>"
+        "└MAC:\t"..mac.."</span>\n"
 
-	if int ~= "N/A" then
-	  break
-        end
       end
     else
       msg = "<span font_desc=\""..font.."\">Wired network is disconnected</span>"
@@ -58,7 +81,7 @@ local function worker(args)
   widget:set_widget(wired_na)
   local function net_update()
     connected = false
-    for _, i in pairs(interfaces) do
+    for _, i in pairs(interfaces or get_interfaces()) do
       awful.spawn.easy_async("bash -c \"ip link show "..i.." | awk 'NR==1 {printf \\\"%s\\\", $9}'\"", function(stdout, stderr, reason, exit_code)
           state = stdout:sub(1, stdout:len() - 1)
           if (state == "UP") then
