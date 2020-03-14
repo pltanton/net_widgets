@@ -25,7 +25,7 @@ To display metrics about ESSID, bit rate and more, make sure that you have `iw` 
 
 ### Wired network indicator.
 ![wired widget](https://dl.dropbox.com/s/5hg1bo41luelzob/wired_icon.png)
-If network is disconnected icon changes color to red. You can set multiple interfaces to indicate it. It also have got popup.
+If network is disconnected icon changes color to red. You can set multiple interfaces to indicate it. If you don't set interfaces or set it to `nil`, the widget will detect interfaces every time it checks status or shows the popup. Speaking of which, the popup shows the IP and MAC addresses, plus associated routes, for each queried or supplied interface. Note that you can show your wireless interface in here, but it won't show wireless-specific properties like signal strength or SSID. Use the wireless widget for that.
 
 To create widget put in `rc.lua`
 ```Lua
@@ -35,7 +35,7 @@ net_wired = net_widgets.indicator({
 })
 ```
 
-By default `interfaces={"enp2s0"}`, `timeout=5`
+By default `interfaces=nil`, `timeout=5`
 
 ### Internet access indicator.
 <!---
