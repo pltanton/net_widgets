@@ -11,6 +11,7 @@ local function worker(args)
   local args = args or {}
   local widget = wibox.container.background()
   local wired = wibox.widget.imagebox()
+  local vpn = wibox.widget.imagebox()
   local wired_na = wibox.widget.imagebox()
   -- Settings
   local interfaces = args.interfaces
@@ -211,8 +212,6 @@ local function worker(args)
           for _, c in pairs(s.cmdlines) do
             msg = msg .. "├CMD:\t" .. c .. "\n"
           end
-        else
-          msg = msg .. "├CMD:\tNO COMMAND\n"
         end
       end
 
@@ -252,6 +251,7 @@ local function worker(args)
 
   wired:set_image(ICON_DIR.."wired.png")
   wired_na:set_image(ICON_DIR.."wired_na.png")
+  vpn:set_image(ICON_DIR.."vpn.png")
   widget:set_widget(wired_na)
   local function net_update()
     -- Refresh interface data
@@ -266,6 +266,16 @@ local function worker(args)
     for _, s in pairs(real_interfaces) do
       if (s.state == "UP") then
         widget:set_widget(wired)
+      end
+      -- TODO add checks for more vpn types, e.g., l2tp/ipsec, pptp, etc
+      if string.match(s.iface, "^wg-") then  -- WireGuard interface
+        widget:set_widget(vpn)
+        break
+      elseif (string.match(s.iface, "^tun") and s.cmdlines and (
+                string.match(table.concat(s.cmdlines), "openvpn") or
+                string.match(table.concat(s.cmdlines), "vpnc")  -- CiscoVPN
+              )) then
+        widget:set_widget(vpn)
         break
       end
     end  -- for each real_interface
