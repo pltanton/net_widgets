@@ -266,15 +266,18 @@ local function worker(args)
     for _, s in pairs(real_interfaces) do
       if (s.state == "UP") then
         widget:set_widget(wired)
+        if string.match(s.iface, "^wg-") then  -- WireGuard interface
+          widget:set_widget(vpn)
+          break
+        end
       end
       -- TODO add checks for more vpn types, e.g., l2tp/ipsec, pptp, etc
-      if string.match(s.iface, "^wg-") then  -- WireGuard interface
-        widget:set_widget(vpn)
-        break
-      elseif (string.match(s.iface, "^tun") and s.cmdlines and (
-                string.match(table.concat(s.cmdlines), "openvpn") or
-                string.match(table.concat(s.cmdlines), "vpnc")  -- CiscoVPN
-              )) then
+      if (string.match(s.iface, "^tun") and s.cmdlines and (
+            -- TUN/TAP devices are never in an "UP" state, but if there's a
+            -- running process associated with it, it's probably connected
+            string.match(table.concat(s.cmdlines), "openvpn") or
+            string.match(table.concat(s.cmdlines), "vpnc")  -- CiscoVPN
+          )) then
         widget:set_widget(vpn)
         break
       end
