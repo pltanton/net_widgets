@@ -15,7 +15,7 @@ local function worker(args)
   local interfaces = args.interfaces
   local ignore_interfaces = args.ignore_interfaces or {}
   local ICON_DIR = awful.util.getdir("config").."/"..module_path.."/net_widgets/icons/"
-  local timeout = args.timeout or 5
+  local timeout = args.timeout or 10
   local font = args.font or beautiful.font
   local onclick = args.onclick
   local hidedisconnected = args.hidedisconnected
@@ -46,19 +46,27 @@ local function worker(args)
     return ifaces
   end
 
+  local cmdlines = {}  -- e.g., cmdlines[iface] == "openvpn --config work.conf"
   local connected = false
   local function text_grabber()
     local msg = ""
     for _, i in pairs(interfaces or get_interfaces()) do
       msg = msg .. "\n<span font_desc=\""..font.."\">┌["..i.."]\n"
+
+      -- Show process information
+      if (not args.skipcmdline and cmdlines[i]) then
+        msg = msg .. "├CMD:\t" .. cmdlines[i] .. "\n"
+      end
+
+      -- Grab IP and MAC addresses
       f = io.popen("ip addr show "..i)
       for line in f:lines() do
-        inet = string.match(line, "inet ([%d.]+)")
+        local inet = string.match(line, "inet ([%d.]+)")
         if inet then
           -- inet 192.168.1.190/24 brd 192.168.1.255 scope global enp3s0
           msg = msg .. "├IP:\t"..inet.."\n"
         else
-          mac = string.match(line, "link/ether ([%x:]+)")
+          local mac = string.match(line, "link/ether ([%x:]+)")
           if mac then
             -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
             msg = msg .. "├MAC:\t"..mac.."\n"
@@ -67,34 +75,37 @@ local function worker(args)
       end
       f:close()
 
+      -- Grab route information
       local localrt = {}
-      f = io.popen("ip route")
-      for line in f:lines() do
-        local rt = string.match(line, "^([^%s]+) dev "..i)
-        if rt then
-          -- 10.11.0.0/24 dev tun2 proto kernel scope link src 10.11.0.3
-          if string.match(line, " proto ") then
-            proto = string.match(line, " proto ([^%s]+) ")
-            if not (proto == "kernel") then
-              rt = rt .. " [" .. proto .. "]"
-            end
-          end
-          table.insert(localrt, rt)
-        else
-          rt = string.match(line, "^([^%s]+ via [%d.]+) dev "..i)
+      if (not args.skiproutes) then
+        f = io.popen("ip route")
+        for line in f:lines() do
+          local rt = string.match(line, "^([^%s]+) dev "..i)
           if rt then
-            -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+            -- 10.11.0.0/24 dev tun2 proto kernel scope link src 10.11.0.3
             if string.match(line, " proto ") then
               proto = string.match(line, " proto ([^%s]+) ")
               if not (proto == "kernel") then
                 rt = rt .. " [" .. proto .. "]"
               end
             end
-            msg = msg .. "├RT:\t"..rt.."\n"
+            table.insert(localrt, rt)
+          else
+            rt = string.match(line, "^([^%s]+ via [%d.]+) dev "..i)
+            if rt then
+              -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+              if string.match(line, " proto ") then
+                proto = string.match(line, " proto ([^%s]+) ")
+                if not (proto == "kernel") then
+                  rt = rt .. " [" .. proto .. "]"
+                end
+              end
+              msg = msg .. "├RT:\t"..rt.."\n"
+            end
           end
         end
+        f:close()
       end
-      f:close()
 
       if (#localrt == 0) then
         table.insert(localrt, "NO LOCAL ROUTE")
@@ -114,6 +125,8 @@ local function worker(args)
   local function net_update()
     connected = false
     for _, i in pairs(interfaces or get_interfaces()) do
+
+      -- Grab interface state information, set widget accordingly
       awful.spawn.easy_async("bash -c \"ip link show "..i.." | awk 'NR==1 {printf \\\"%s\\\", $9}'\"", function(stdout, stderr, reason, exit_code)
           state = stdout:sub(1, stdout:len() - 1)
           if (state == "UP") then
@@ -129,13 +142,30 @@ local function worker(args)
             end
           end
         end)
+
+      -- Grab process information (e.g., for tun/tap devices)
+      if (not args.skipcmdline) then
+        local cmd = "sudo bash -c \"find /proc -name task -prune -o "
+        cmd = cmd .. "-path /proc/\\*/fdinfo/\\* -print0 "
+        cmd = cmd .. "| xargs -0 grep " .. i .. " "
+        cmd = cmd .. "| sed 's/^\\(.proc.*\\/\\)fdinfo.*/\\1cmdline/'"
+        --cmd = cmd .. "| xargs sed 's/\\x00/ /g'"
+        cmd = cmd .. "\""
+        awful.spawn.easy_async(cmd, function(stdout, stderr, reason, exit_code)
+            if (#stdout > 0) then
+              local f = io.popen("sudo cat " .. stdout)
+              local cmdline = f:read()
+              f:close()
+              cmdline = string.gsub(cmdline, "\x00", " ")
+              cmdlines[i] = string.gsub(cmdline, "\x00", " ")
+            end
+          end)
+      end
     end
 
     return true
   end
-
   net_update()
-
   gears.timer.start_new(timeout, net_update)
 
   local notification = nil
