@@ -1,3 +1,4 @@
+-- vim: sw=2:sts=2:et:
 local wibox = require("wibox")
 local awful = require("awful")
 local beautiful = require("beautiful")
@@ -21,100 +22,230 @@ local function worker(args)
   local hidedisconnected = args.hidedisconnected
   local popup_position = args.popup_position or naughty.config.defaults.position
 
+  local real_interfaces = nil
+  -----------------------
+  -- This function fetches the latest info about a given interface
+  -- It makes use of `io.popen` so we only run it asynchronously
+  -- It updates the global variable `real_interfaces`
+  -- It only processes the interfaces listed in the `interfaces` argument
+  -- If that argument is blank it will process all interfaces
+  -----------------------
   local function get_interfaces()
-    local ifaces = {}
-    f = io.popen("ip link")
+    ----
+    -- First, get the `links` table of all link data for relevant interfaces
+    ----
+    local links = {}
+    -- All on one line:
+    -- 2: enp3s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel
+    --    state UP mode DEFAULT group default qlen 1000\ link/ether
+    --    1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+    -- 32: br-39d5fbb21742: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc
+    --    noqueue state DOWN mode DEFAULT group default \    link/ether
+    --    02:42:68:08:88:34 brd ff:ff:ff:ff:ff:ff
+    local ipl_pattern = "^%d+:%s+([^%s]+):%s+<.*>%s.*%s" ..
+        "state%s+([^%s]+)%s.*%slink/([^%s]+)[%s]*([%x:]*)"
+    local f = io.popen("ip -oneline link show")
     for line in f:lines() do
-      -- 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 [...]
-      --     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
-      -- 2: enp3s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 [...]
-      --     link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
-      local iface = string.match(line, "^%d+:%s+([%l%d]+):%s+<")
-      if iface then
-        for _, i in pairs(ignore_interfaces) do
-          if (i == iface) then
-            iface = nil
-            break
-          end
-        end
-        if iface then
-          table.insert(ifaces, iface)
+      local iface, state, type_, mac = string.match(line, ipl_pattern)
+      if not iface then
+        notification = naughty.notify({
+          preset = fs_notification_preset,
+          text = "LINE: \n" .. line,
+          timeout = t_out,
+          screen = mouse.screen,
+          position = popup_position
+        })
+        goto continue_iplink
+      end
+
+      for _, i in pairs(ignore_interfaces) do
+        if (i == iface) then
+          goto continue_iplink  -- ignore this interface
         end
       end
+      if interfaces then
+        for _, i in pairs(interfaces) do
+          if (i == iface) then
+            goto donotignore_iplink  -- do not ignore this link
+          end
+        end
+        goto continue_iplink  -- ignore this link
+      end
+      ::donotignore_iplink::  -- IS in the list of interfaces to process
+
+      links[iface] = {iface = iface, state = state, type_ = type_, mac = mac}
+      ::continue_iplink::  -- is NOT in the list of interfaces to process
     end
     f:close()
-    return ifaces
-  end
+      
+    ----
+    -- Next, get the `ifaces` to be a sequence of tables with data about each
+    -- relevant interface
+    ----
+    local ifaces = {}
 
-  local cmdlines = {}  -- e.g., cmdlines[iface] == "openvpn --config work.conf"
-  local connected = false
-  local function text_grabber()
-    local msg = ""
-    for _, i in pairs(interfaces or get_interfaces()) do
-      msg = msg .. "\n<span font_desc=\""..font.."\">┌["..i.."]\n"
-
-      -- Show process information
-      if (not args.skipcmdline and cmdlines[i]) then
-        msg = msg .. "├CMD:\t" .. cmdlines[i] .. "\n"
+    -- Grab address information
+    -- All on one line:
+    -- 2: enp3s0    inet 192.168.1.190/24 brd 192.168.1.255 scope global \
+    --    link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
+    local ipa_pattern = "^%d+:%s+([^%s]+)%s+([^%s]+)%s+([^%s]+)"
+    local f = io.popen("ip -oneline addr show")
+    for line in f:lines() do
+      local iface, type_, addr = string.match(line, ipa_pattern)
+      if not links[iface] then
+        goto continue_ipaddr  -- is NOT in the list of interfaces to process
       end
+      if not links[iface].addrs then
+        -- First addr for this iface
+        links[iface].addrs = {}
+        table.insert(ifaces, links[iface])
+      end
+      table.insert(links[iface].addrs, {addr = addr, type_ = type_})
+      ::continue_ipaddr::  -- is NOT in the list of interfaces to process
+    end
+    f:close()
 
-      -- Grab IP and MAC addresses
-      f = io.popen("ip addr show "..i)
+    -- Grab route information
+    if (not args.skiproutes) then
+      local f = io.popen("ip -oneline route show")
       for line in f:lines() do
-        local inet = string.match(line, "inet ([%d.]+)")
-        if inet then
-          -- inet 192.168.1.190/24 brd 192.168.1.255 scope global enp3s0
-          msg = msg .. "├IP:\t"..inet.."\n"
-        else
-          local mac = string.match(line, "link/ether ([%x:]+)")
-          if mac then
-            -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
-            msg = msg .. "├MAC:\t"..mac.."\n"
+        -- 10.11.0.0/24 dev tun2 proto kernel scope link src 10.11.0.3
+        local rt, iface = string.match(line, "^([^%s]+)%s+dev%s+([^%s]+)")
+        if rt then
+          if not links[iface] then
+            goto continue_iprts  -- is NOT in the list of interfaces to process
           end
-        end
-      end
-      f:close()
-
-      -- Grab route information
-      local localrt = {}
-      if (not args.skiproutes) then
-        f = io.popen("ip route")
-        for line in f:lines() do
-          local rt = string.match(line, "^([^%s]+) dev "..i)
+          if not links[iface].localrts then  -- First route for this iface
+            links[iface].localrts = {}
+          end
+          if string.match(line, " proto ") then
+            proto = string.match(line, " proto ([^%s]+) ")
+            if not (proto == "kernel") then  -- e.g., " proto dhcp "
+              rt = rt .. " [" .. proto .. "]"
+            end
+          end
+          table.insert(links[iface].localrts, rt)
+        else
+          -- 192.168.123.0/24 via 10.10.0.1 dev tun2
+          rtpattern = "^([^%s]+%s+via%s+[^%s]+)%s+dev%s+([^%s]+)"
+          rt, iface = string.match(line, rtpattern)
           if rt then
-            -- 10.11.0.0/24 dev tun2 proto kernel scope link src 10.11.0.3
+            if not links[iface] then
+              goto continue_iprts  -- is NOT in the list of ifaces to process
+            end
+            if not links[iface].rts then  -- First route for this iface
+              links[iface].rts = {}
+            end
             if string.match(line, " proto ") then
               proto = string.match(line, " proto ([^%s]+) ")
-              if not (proto == "kernel") then
+              if not (proto == "kernel") then  -- e.g., " proto dhcp "
                 rt = rt .. " [" .. proto .. "]"
               end
             end
-            table.insert(localrt, rt)
+            table.insert(links[iface].rts, rt)
           else
-            rt = string.match(line, "^([^%s]+ via [%d.]+) dev "..i)
-            if rt then
-              -- link/ether 1c:6f:65:3f:48:9a brd ff:ff:ff:ff:ff:ff
-              if string.match(line, " proto ") then
-                proto = string.match(line, " proto ([^%s]+) ")
-                if not (proto == "kernel") then
-                  rt = rt .. " [" .. proto .. "]"
-                end
-              end
-              msg = msg .. "├RT:\t"..rt.."\n"
-            end
+            -- Regexps should catch every line!
+            notification = naughty.notify({
+              preset = fs_notification_preset,
+              text = "Route pattern failure:\n" .. line,
+              timeout = 300,
+              screen = mouse.screen,
+              position = popup_position
+            })
           end
         end
-        f:close()
+        ::continue_iprts::  -- is NOT in the list of interfaces to process
+      end  -- for line in ip route
+      f:close()
+    end  -- Grab route information
+
+    -- Grab process information (e.g., for tun/tap devices)
+    if (not args.skipcmdline) then
+      local cmd = "sudo find /proc -name task -prune -o "
+      cmd = cmd .. "-path /proc/\\*/fdinfo/\\* -print0 "
+      cmd = cmd .. "| xargs -0 sudo grep '^iff:'"
+      --cmd = cmd .. "| sed 's/^\\(.proc.*\\/\\)fdinfo.*/\\1cmdline/'"
+      --cmd = cmd .. "| xargs grep -va asdfasdfasdf "
+      --cmd = cmd .. "| sed 's/\\x00/ /g'"
+      --cmd = cmd .. "\""
+      local f = io.popen(cmd)
+      for line in f:lines() do
+        -- /proc/2993045/fdinfo/4:iff:     tun0
+        iff_pattern = "^/proc/(%d+)/fdinfo/%d+:iff:%s+([^%s]+)"
+        local pid, iface = string.match(line, iff_pattern)
+        local ff = io.open("/proc/" .. pid .. "/cmdline", "rb")
+        local c = ff:read("a")
+        ff:close()
+        c = string.gsub(c, "\x00", " ")
+        if not links[iface].cmdlines then
+          links[iface].cmdlines = {}
+        end
+        table.insert(links[iface].cmdlines, c)
+      end
+      f:close()
+    end  -- Grab process list
+
+    for _, s in ipairs(links) do
+      table.insert(ifaces, s)
+    end
+    return ifaces
+  end  -- function get_interfaces()
+
+  local function text_grabber()
+    if not real_interfaces then
+      return "Interface data not loaded"
+    end
+    local msg = ""
+    for _, s in pairs(real_interfaces) do
+      i = s.iface
+      msg = msg .. "\n<span font_desc=\"" .. font .. "\">"
+      msg = msg .. "┌[" .. s.iface .. "]"
+      if s.state then
+        msg = msg .. " - state is " .. s.state
+      end
+      msg = msg .. "\n"
+
+      -- Show process information
+      if not args.skipcmdline then
+        if  s.cmdlines then
+          for _, c in pairs(s.cmdlines) do
+            msg = msg .. "├CMD:\t" .. c .. "\n"
+          end
+        else
+          msg = msg .. "├CMD:\tNO COMMAND\n"
+        end
       end
 
-      if (#localrt == 0) then
-        table.insert(localrt, "NO LOCAL ROUTE")
+      -- Show IP and MAC addresses
+      if (args.skiproutes) then
+        for a = 1, #s.addrs - 1 do
+          msg = msg .. "├ADDR:\t" .. s.addrs[a].addr ..
+                " (" .. s.addrs[a].type_ .. ")\n"
+        end
+        msg = msg .. "└ADDR:\t" .. s.addrs[#s.addrs].addr ..
+              " (" .. s.addrs[#s.addrs].type_ .. ")</span>\n"
+      else
+        for _, a in pairs(s.addrs) do
+          msg = msg .. "├ADDR:\t" .. a.addr .. " (" .. a.type_ .. ")\n"
+        end
       end
-      for rt = 1, #localrt - 1 do
-        msg = msg .. "├LOC:\t"..localrt[rt].."\n"
-      end
-      msg = msg .. "└LOC:\t"..localrt[#localrt].."</span>\n"
 
+      -- Grab route information
+      if (not args.skiproutes) then
+        if s.rts then
+          for _, rt in pairs(s.rts) do
+            msg = msg .. "├RTE:\t" .. rt .. "\n"
+          end
+        end
+        if (s.localrts and #s.localrts > 0) then
+          for rt = 1, #s.localrts - 1 do
+            msg = msg .. "├LOC:\t" .. s.localrts[rt] .. "\n"
+          end
+          msg = msg .. "└LOC:\t" .. s.localrts[#s.localrts] .. "</span>\n"
+        else
+          msg = msg .. "└LOC:\tNO LOCAL ROUTE</span>\n"
+        end
+      end
     end
     return msg
   end
@@ -123,46 +254,21 @@ local function worker(args)
   wired_na:set_image(ICON_DIR.."wired_na.png")
   widget:set_widget(wired_na)
   local function net_update()
-    connected = false
-    for _, i in pairs(interfaces or get_interfaces()) do
+    -- Refresh interface data
+    real_interfaces = get_interfaces()
 
-      -- Grab interface state information, set widget accordingly
-      awful.spawn.easy_async("bash -c \"ip link show "..i.." | awk 'NR==1 {printf \\\"%s\\\", $9}'\"", function(stdout, stderr, reason, exit_code)
-          state = stdout:sub(1, stdout:len() - 1)
-          if (state == "UP") then
-            connected = true
-          end
-          if connected then
-            widget:set_widget(wired)
-          else
-            if not hidedisconnected then
-              widget:set_widget(wired_na)
-            else
-              widget:set_widget(nil)
-            end
-          end
-        end)
-
-      -- Grab process information (e.g., for tun/tap devices)
-      if (not args.skipcmdline) then
-        local cmd = "sudo bash -c \"find /proc -name task -prune -o "
-        cmd = cmd .. "-path /proc/\\*/fdinfo/\\* -print0 "
-        cmd = cmd .. "| xargs -0 grep " .. i .. " "
-        cmd = cmd .. "| sed 's/^\\(.proc.*\\/\\)fdinfo.*/\\1cmdline/'"
-        --cmd = cmd .. "| xargs sed 's/\\x00/ /g'"
-        cmd = cmd .. "\""
-        awful.spawn.easy_async(cmd, function(stdout, stderr, reason, exit_code)
-            if (#stdout > 0) then
-              local f = io.popen("sudo cat " .. stdout)
-              local cmdline = f:read()
-              f:close()
-              cmdline = string.gsub(cmdline, "\x00", " ")
-              cmdlines[i] = string.gsub(cmdline, "\x00", " ")
-            end
-          end)
-      end
+    -- Grab interface state, set icon and global "connected" status
+    if not hidedisconnected then
+      widget:set_widget(wired_na)
+    else
+      widget:set_widget(nil)
     end
-
+    for _, s in pairs(real_interfaces) do
+      if (s.state == "UP") then
+        widget:set_widget(wired)
+        break
+      end
+    end  -- for each real_interface
     return true
   end
   net_update()
