@@ -22,7 +22,7 @@ local function worker(args)
   local onclick = args.onclick
   local hidedisconnected = args.hidedisconnected
   local popup_position = args.popup_position or naughty.config.defaults.position
-  if args.skiproutes then
+  if args.skiproutes or args.skipcmdline then
     args.skipvpncheck = true
   end
 
@@ -86,6 +86,7 @@ local function worker(args)
     -- Next, get the `ifaces` to be a sequence of tables with data about each
     -- relevant interface
     ----
+    -- TODO document all the fields in each `links[iface]` table
     local ifaces = {}
 
     -- Grab address information
@@ -177,6 +178,7 @@ local function worker(args)
       f:close()
 
       -- TODO allow gaps in bogon space; check IPv6 coverage
+      -- Label any iface with full route coverage as default_route
       for iface, s in pairs(links) do
         if s.coverage then
           s.default_route = true  -- iface is a default route, unless...
@@ -228,6 +230,35 @@ local function worker(args)
       f:close()
     end  -- Grab process list
 
+    -- TODO add checks for more vpn types, e.g., l2tp/ipsec, pptp, etc
+    -- Auto-detect VPN interfaces
+    if (not args.skipvpncheck) then
+      local f = io.popen("sudo wg")
+      for line in f:lines() do
+        local iface = line:match("^interface: ([^%s]+)")
+        if iface and links[iface] then
+          links[iface].is_wireguard = true
+          links[iface].is_vpn = true
+          links[iface].is_drvpn = links[iface].default_route
+        end
+      end
+      for iface, s in pairs(links) do
+        if iface:match("^tun") and s.cmdlines then
+          -- TUN/TAP devices are never in an "UP" state, but if there's a
+          -- running process associated with it, it's probably connected
+          if string.match(table.concat(s.cmdlines), "openvpn") then
+            s.is_vpn = true
+            s.is_openvpn = true
+            s.is_drvpn = s.default_route
+          elseif string.match(table.concat(s.cmdlines), "vpnc") then
+            s.is_vpn = true
+            s.is_vpnc = true
+            s.is_drvpn = s.default_route
+          end
+        end
+      end
+    end
+
     for _, s in ipairs(links) do
       table.insert(ifaces, s)
     end
@@ -243,7 +274,20 @@ local function worker(args)
       i = s.iface
       msg = msg .. "\n<span font_desc=\"" .. font .. "\">"
       msg = msg .. "┌[" .. s.iface .. "]"
-      if s.state then
+      if s.is_vpn then
+        if s.is_drvpn then
+          msg = msg .. " - Full VPN"
+        else
+          msg = msg .. " - Partial VPN"
+        end
+        if s.is_openvpn then
+          msg = msg .. " - (OpenVPN)"
+        elseif s.is_vpnc then
+          msg = msg .. " - (Cisco3000/vpnc)"
+        elseif s.is_wireguard then
+          msg = msg .. " - (WireGuard)"
+        end
+      elseif s.state then  -- not a VPN but we have state
         msg = msg .. " - state is " .. s.state
       end
       msg = msg .. "\n"
@@ -291,7 +335,7 @@ local function worker(args)
       end
     end
     return msg
-  end
+  end  -- function text_grabber()
 
   wired:set_image(ICON_DIR.."wired.png")
   wired_na:set_image(ICON_DIR.."wired_na.png")
@@ -301,30 +345,18 @@ local function worker(args)
     -- Refresh interface data
     real_interfaces = get_interfaces()
 
-    -- Grab interface state, set icon and global "connected" status
+    -- Grab interface state, set icon
     if not hidedisconnected then
       widget:set_widget(wired_na)
     else
       widget:set_widget(nil)
     end
     for _, s in pairs(real_interfaces) do
-      if (s.state == "UP") then
-        widget:set_widget(wired)
-        if not s.skipvpncheck and s.is_wireguard then  -- WireGuard interface
-          widget:set_widget(vpn)
-          break
-        end
-      end
-      -- TODO add checks for more vpn types, e.g., l2tp/ipsec, pptp, etc
-      if (not s.skipvpncheck and
-            string.match(s.iface, "^tun") and s.cmdlines and (
-            -- TUN/TAP devices are never in an "UP" state, but if there's a
-            -- running process associated with it, it's probably connected
-            string.match(table.concat(s.cmdlines), "openvpn") or
-            string.match(table.concat(s.cmdlines), "vpnc")  -- CiscoVPN
-          )) then
+      if (not args.skipvpncheck and s.is_drvpn) then
         widget:set_widget(vpn)
         break
+      elseif (s.state == "UP") then
+        widget:set_widget(wired)
       end
     end  -- for each real_interface
     return true
