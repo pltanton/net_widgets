@@ -22,7 +22,15 @@ local function worker(args)
   local onclick = args.onclick
   local hidedisconnected = args.hidedisconnected
   local popup_position = args.popup_position or naughty.config.defaults.position
-  if args.skiproutes or args.skipcmdline then
+
+  -- Turn off advanced details by default
+  if args.skiproutes == nil then
+    args.skiproutes = true
+  end
+  if args.skipcmdline == nil then
+    args.skipcmdline = true
+  end
+  if args.skipvpncheck == nil or args.skiproutes or args.skipcmdline then
     args.skipvpncheck = true
   end
 

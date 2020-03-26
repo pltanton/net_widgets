@@ -29,11 +29,11 @@ If network is disconnected icon changes color to red. You can set multiple inter
 
 Note that you can show your wireless interface in here, but it won't show wireless-specific properties like signal strength or SSID. Use the wireless widget for that.
 
-Set `skipcmdline` to non-false if you don't want to show the command line of any process associated with the interface.  Implies `skipvpncheck`.  **NB**: the cmdline functionality requires passwordless `sudo find` and `sudo grep`
+Set `skipcmdline` to false if you want to show the command line of any process associated with the interface.  If true, it implies `skipvpncheck`.  **NB**: the cmdline functionality requires passwordless `sudo find` and `sudo grep`
 
-Set `skiproutes` to non-false if you don't want to show the routes associated with the interface.  Implies `skipvpncheck`.
+Set `skiproutes` to false if you want to show the routes associated with the interface.  If true, implies `skipvpncheck`.
 
-Set `skipvpncheck` to non-false if you don't want to auto-detect a full-route-coverage VPN and change the icon.  Supports OpenVPN, Cisco vpnc, and WireGuard.  **NB**: the WireGuard checks require passwordless `sudo wg`
+Set `skipvpncheck` to false if you want to auto-detect a full-route-coverage VPN and change the icon.  Supports OpenVPN, Cisco vpnc, and WireGuard.  **NB**: the WireGuard checks require passwordless `sudo wg`
 
 To create widget put in `rc.lua`
 ```Lua
