@@ -23,6 +23,17 @@ local function worker(args)
   local hidedisconnected = args.hidedisconnected
   local popup_position = args.popup_position or naughty.config.defaults.position
 
+  -- Turn off advanced details by default
+  if args.skiproutes == nil then
+    args.skiproutes = true
+  end
+  if args.skipcmdline == nil then
+    args.skipcmdline = true
+  end
+  if args.skipvpncheck == nil or args.skiproutes or args.skipcmdline then
+    args.skipvpncheck = true
+  end
+
   local real_interfaces = nil
   -----------------------
   -- This function fetches the latest info about a given interface
@@ -83,6 +94,7 @@ local function worker(args)
     -- Next, get the `ifaces` to be a sequence of tables with data about each
     -- relevant interface
     ----
+    -- TODO document all the fields in each `links[iface]` table
     local ifaces = {}
 
     -- Grab address information
@@ -136,6 +148,7 @@ local function worker(args)
             end
             if not links[iface].rts then  -- First route for this iface
               links[iface].rts = {}
+              links[iface].coverage = {}
             end
             if string.match(line, " proto ") then
               proto = string.match(line, " proto ([^%s]+) ")
@@ -144,6 +157,19 @@ local function worker(args)
               end
             end
             table.insert(links[iface].rts, rt)
+            if rt:match("^default") then
+              rt = "0.0.0.0/0"
+              --links[iface].default_route = true
+            end
+            local pattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+)/(%d+)"
+            local o1, o2, o3, o4, n = rt:match(pattern)
+            if o1 and o2 and o3 and o4 and n then
+              o1, o2, o3, o4, n = o1+0, o2+0, o3+0, o4+0, n+0
+              if o1<256 and o2<256 and o3<256 and o4<256 and n<33 then
+                local ipdec = 2^24*o1 + 2^16*o2 + 2^8*o3 + o4
+                table.insert(links[iface].coverage, {ipdec, ipdec+2^(32-n)-1})
+              end
+            end
           else
             -- Regexps should catch every line!
             notification = naughty.notify({
@@ -158,6 +184,32 @@ local function worker(args)
         ::continue_iprts::  -- is NOT in the list of interfaces to process
       end  -- for line in ip route
       f:close()
+
+      -- TODO allow gaps in bogon space; check IPv6 coverage
+      -- Label any iface with full route coverage as default_route
+      for iface, s in pairs(links) do
+        if s.coverage then
+          s.default_route = true  -- iface is a default route, unless...
+          table.sort(s.coverage, function (a, b) return a[1] < b[1] end)
+          if s.coverage[1][1] > 0.0 then
+            s.default_route = false  -- ...coverage starts at > 0...
+          else
+            local biggest = s.coverage[1][2]
+            for i = 2, #s.coverage do
+              if ((biggest+1) < s.coverage[i][1]) then
+                s.default_route = false  -- ...or there's a gap...
+                break
+              end
+              if s.coverage[i][2] > biggest then
+                biggest = s.coverage[i][2]
+              end
+            end
+            if biggest < ((2.0^32) - 1.0) then
+              s.default_route = false  -- ...or coverage ends at < 2^32
+            end
+          end
+        end
+      end
     end  -- Grab route information
 
     -- Grab process information (e.g., for tun/tap devices)
@@ -186,6 +238,35 @@ local function worker(args)
       f:close()
     end  -- Grab process list
 
+    -- TODO add checks for more vpn types, e.g., l2tp/ipsec, pptp, etc
+    -- Auto-detect VPN interfaces
+    if (not args.skipvpncheck) then
+      local f = io.popen("sudo wg")
+      for line in f:lines() do
+        local iface = line:match("^interface: ([^%s]+)")
+        if iface and links[iface] then
+          links[iface].is_wireguard = true
+          links[iface].is_vpn = true
+          links[iface].is_drvpn = links[iface].default_route
+        end
+      end
+      for iface, s in pairs(links) do
+        if iface:match("^tun") and s.cmdlines then
+          -- TUN/TAP devices are never in an "UP" state, but if there's a
+          -- running process associated with it, it's probably connected
+          if string.match(table.concat(s.cmdlines), "openvpn") then
+            s.is_vpn = true
+            s.is_openvpn = true
+            s.is_drvpn = s.default_route
+          elseif string.match(table.concat(s.cmdlines), "vpnc") then
+            s.is_vpn = true
+            s.is_vpnc = true
+            s.is_drvpn = s.default_route
+          end
+        end
+      end
+    end
+
     for _, s in ipairs(links) do
       table.insert(ifaces, s)
     end
@@ -201,7 +282,20 @@ local function worker(args)
       i = s.iface
       msg = msg .. "\n<span font_desc=\"" .. font .. "\">"
       msg = msg .. "┌[" .. s.iface .. "]"
-      if s.state then
+      if s.is_vpn then
+        if s.is_drvpn then
+          msg = msg .. " - Full VPN"
+        else
+          msg = msg .. " - Partial VPN"
+        end
+        if s.is_openvpn then
+          msg = msg .. " - (OpenVPN)"
+        elseif s.is_vpnc then
+          msg = msg .. " - (Cisco3000/vpnc)"
+        elseif s.is_wireguard then
+          msg = msg .. " - (WireGuard)"
+        end
+      elseif s.state then  -- not a VPN but we have state
         msg = msg .. " - state is " .. s.state
       end
       msg = msg .. "\n"
@@ -216,21 +310,23 @@ local function worker(args)
       end
 
       -- Show IP and MAC addresses
+      for a = 1, #s.addrs - 1 do
+        msg = msg .. "├ADDR:\t" .. s.addrs[a].addr ..
+              " (" .. s.addrs[a].type_ .. ")\n"
+      end
       if (args.skiproutes) then
-        for a = 1, #s.addrs - 1 do
-          msg = msg .. "├ADDR:\t" .. s.addrs[a].addr ..
-                " (" .. s.addrs[a].type_ .. ")\n"
-        end
         msg = msg .. "└ADDR:\t" .. s.addrs[#s.addrs].addr ..
               " (" .. s.addrs[#s.addrs].type_ .. ")</span>\n"
       else
-        for _, a in pairs(s.addrs) do
-          msg = msg .. "├ADDR:\t" .. a.addr .. " (" .. a.type_ .. ")\n"
-        end
+        msg = msg .. "├ADDR:\t" .. s.addrs[#s.addrs].addr ..
+              " (" .. s.addrs[#s.addrs].type_ .. ")\n"
       end
 
       -- Grab route information
       if (not args.skiproutes) then
+        if s.default_route then
+          msg = msg .. "├IS A DEFAULT ROUTE\n"
+        end
         if s.rts then
           for _, rt in pairs(s.rts) do
             msg = msg .. "├RTE:\t" .. rt .. "\n"
@@ -247,7 +343,7 @@ local function worker(args)
       end
     end
     return msg
-  end
+  end  -- function text_grabber()
 
   wired:set_image(ICON_DIR.."wired.png")
   wired_na:set_image(ICON_DIR.."wired_na.png")
@@ -257,29 +353,18 @@ local function worker(args)
     -- Refresh interface data
     real_interfaces = get_interfaces()
 
-    -- Grab interface state, set icon and global "connected" status
+    -- Grab interface state, set icon
     if not hidedisconnected then
       widget:set_widget(wired_na)
     else
       widget:set_widget(nil)
     end
     for _, s in pairs(real_interfaces) do
-      if (s.state == "UP") then
-        widget:set_widget(wired)
-        if string.match(s.iface, "^wg-") then  -- WireGuard interface
-          widget:set_widget(vpn)
-          break
-        end
-      end
-      -- TODO add checks for more vpn types, e.g., l2tp/ipsec, pptp, etc
-      if (string.match(s.iface, "^tun") and s.cmdlines and (
-            -- TUN/TAP devices are never in an "UP" state, but if there's a
-            -- running process associated with it, it's probably connected
-            string.match(table.concat(s.cmdlines), "openvpn") or
-            string.match(table.concat(s.cmdlines), "vpnc")  -- CiscoVPN
-          )) then
+      if (not args.skipvpncheck and s.is_drvpn) then
         widget:set_widget(vpn)
         break
+      elseif (s.state == "UP") then
+        widget:set_widget(wired)
       end
     end  -- for each real_interface
     return true
