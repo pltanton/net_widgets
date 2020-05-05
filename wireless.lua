@@ -3,7 +3,48 @@ local awful         = require("awful")
 local beautiful     = require("beautiful")
 local naughty       = require("naughty")
 local gears         = require("gears")
+local cairo         = require("lgi").cairo
 local module_path = (...):match ("(.+/)[^/]+$") or ""
+
+function dbg(message)
+    naughty.notify({ preset = naughty.config.presets.normal,
+                     title = "debug",
+                     text = message })
+end
+
+local function draw_signal(level)
+    -- draw 32x32 for simplicity, imagebox will resize it using loseless transform
+    local img = cairo.ImageSurface.create(cairo.Format.ARGB32, 32, 32)
+    local cr  = cairo.Context(img)
+
+    cr:set_source(gears.color(theme.fg_normal))
+    if level > 75 then
+        cr:arc(         32/2, 32/2, 32/2, 145*math.pi/180, 395*math.pi/180)
+        cr:arc_negative(32/2, 32/2, 32/2-3, 395*math.pi/180, 145*math.pi/180)
+    end
+    if level > 50 then
+        cr:arc(         32/2, 32/2, 24/2, 145*math.pi/180, 395*math.pi/180)
+        cr:arc_negative(32/2, 32/2, 24/2-3, 395*math.pi/180, 145*math.pi/180)
+    end
+    if level > 25 then
+        cr:arc(         32/2, 32/2, 16/2, 145*math.pi/180, 395*math.pi/180)
+        cr:arc_negative(32/2, 32/2, 16/2-3, 395*math.pi/180, 145*math.pi/180)
+    end
+    cr:rectangle(32/2-1, 32/2-1, 2, 32/2-2)
+    cr:fill()
+
+    if level == 0 then
+        cr:set_source(gears.color("#cf5050"))
+        gears.shape.transform(gears.shape.cross)
+            :rotate(45*math.pi/180)
+                :translate(12, -10)(cr, 10, 10, 3)
+    end
+
+    cr:close_path()
+    cr:fill()
+    return img
+end
+
 
 local wireless = {}
 local function worker(args)
@@ -23,8 +64,7 @@ local function worker(args)
     local widget 	= args.widget == nil and wibox.layout.fixed.horizontal() or args.widget == false and nil or args.widget
     local indent 	= args.indent or 3
 
-    local net_icon = wibox.widget.imagebox()
-    net_icon:set_image(ICON_DIR.."wireless_na.png")
+    local net_icon = wibox.widget.imagebox(draw_signal(0))
     local net_text = wibox.widget.textbox()
     net_text.font = font
     net_text:set_text(" N/A ")
@@ -36,19 +76,11 @@ local function worker(args)
         if signal_level == nil then
             connected = false
             net_text:set_text(" N/A ")
-            net_icon:set_image(ICON_DIR.."wireless_na.png")
+            net_icon:set_image(draw_signal(0))
         else
             connected = true
             net_text:set_text(string.format("%"..indent.."d%%", signal_level))
-            if signal_level < 25 then
-                net_icon:set_image(ICON_DIR.."wireless_0.png")
-            elseif signal_level < 50 then
-                net_icon:set_image(ICON_DIR.."wireless_1.png")
-            elseif signal_level < 75 then
-                net_icon:set_image(ICON_DIR.."wireless_2.png")
-            else
-                net_icon:set_image(ICON_DIR.."wireless_3.png")
-            end
+            net_icon:set_image(draw_signal(signal_level))
         end
     end
 
