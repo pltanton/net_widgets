@@ -6,6 +6,8 @@ local naughty = require("naughty")
 local gears = require("gears")
 local module_path = (...):match ("(.+/)[^/]+$") or ""
 
+local theme = beautiful.get()
+
 local indicator = {}
 local function worker(args)
   local args = args or {}
@@ -89,7 +91,7 @@ local function worker(args)
       ::continue_iplink::  -- is NOT in the list of interfaces to process
     end
     f:close()
-      
+
     ----
     -- Next, get the `ifaces` to be a sequence of tables with data about each
     -- relevant interface
