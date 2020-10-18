@@ -343,7 +343,7 @@ local function worker(args)
         end
       end
     end
-    return msg
+    return string.gsub(string.gsub(msg, '^\n', ""), '\n$', "")
   end  -- function text_grabber()
 
   wired:set_image(ICON_DIR.."wired.png")
