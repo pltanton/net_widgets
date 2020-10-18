@@ -281,7 +281,6 @@ local function worker(args)
     end
     local msg = ""
     for _, s in pairs(real_interfaces) do
-      i = s.iface
       msg = msg .. "\n<span font_desc=\"" .. font .. "\">"
       msg = msg .. "┌[" .. s.iface .. "]"
       if s.is_vpn then
