@@ -15,7 +15,7 @@ local net_widgets = require("net_widgets")
 ![wireless widget](https://dl.dropbox.com/s/737pn4mdwv7x79g/wireless_widget.png)
 Widget is simple as hell. Icon changes depend on signal level, if you put mouse pointer on it you can see some information about current connection.
 
-Create widget by
+Create widget by (make sure you place it after `beautiful.init` otherwise the font is not yet defined)
 ```Lua
 net_wireless = net_widgets.wireless({interface="wlp1s0"})
 ```
