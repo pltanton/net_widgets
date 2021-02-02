@@ -154,8 +154,8 @@ local function worker(args)
                 "├ESSID:\t\t"..essid.."\n"..
                 "├IP:\t\t"..inet.."\n"..
                 "├BSSID\t\t"..mac.."\n"..
-                "├Down:\t\t"..tdown.."\n"..
-                "├Up:\t\t"..tup.."\n"..
+                "├DOWNLOAD:\t\t"..tdown.."\n"..
+                "├UPLOAD:\t\t"..tup.."\n"..
                 ""..signal..
                 "└Bit rate:\t"..bitrate.."</span>"
 
