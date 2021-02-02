@@ -8,6 +8,19 @@ local module_path = (...):match ("(.+/)[^/]+$") or ""
 
 local theme = beautiful.get()
 
+-- { function lifted from https://stackoverflow.com/a/326715
+function os.capture(cmd, raw)
+  local f = assert(io.popen(cmd, 'r'))
+  local s = assert(f:read('*a'))
+  f:close()
+  if raw then return s end
+  s = string.gsub(s, '^%s+', '')
+  s = string.gsub(s, '%s+$', '')
+  s = string.gsub(s, '[\n\r]+', ' ')
+  return s
+end
+-- }
+
 function dbg(message)
     naughty.notify({ preset = naughty.config.presets.normal,
                      title = "debug",
@@ -110,6 +123,8 @@ local function worker(args)
             local essid   = "N/A"
             local bitrate = "N/A"
             local inet    = "N/A"
+            local tdown    = os.capture("ntotal "..interface.." d")
+            local tup    = os.capture("ntotal "..interface.." u")
 
             -- Use iw/ip
             f = io.popen("iw dev "..interface.." link")
@@ -139,6 +154,8 @@ local function worker(args)
                 "├ESSID:\t\t"..essid.."\n"..
                 "├IP:\t\t"..inet.."\n"..
                 "├BSSID\t\t"..mac.."\n"..
+                "├Down:\t\t"..tdown.."\n"..
+                "├Up:\t\t"..tup.."\n"..
                 ""..signal..
                 "└Bit rate:\t"..bitrate.."</span>"
 
