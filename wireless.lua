@@ -164,7 +164,7 @@ local function worker(args)
                 "├IP:\t\t"..inet.."\n"..
                 "├BSSID\t\t"..mac.."\n"..
                 ""..metrics_down..
-                ""..metrics_down..
+                ""..metrics_up..
                 ""..signal..
                 "└Bit rate:\t"..bitrate.."</span>"
 
