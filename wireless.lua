@@ -78,6 +78,7 @@ local function worker(args)
     local onclick       = args.onclick
     local widget        = args.widget == nil and wibox.layout.fixed.horizontal() or args.widget == false and nil or args.widget
     local indent        = args.indent or 3
+    local popup_metrics		    = args.popup_metrics or false
 
     local net_icon = wibox.widget.imagebox(draw_signal(0))
     local net_text = wibox.widget.textbox()
@@ -123,8 +124,6 @@ local function worker(args)
             local essid   = "N/A"
             local bitrate = "N/A"
             local inet    = "N/A"
-            local tdown    = os.capture("ntotal "..interface.." d")
-            local tup    = os.capture("ntotal "..interface.." u")
 
             -- Use iw/ip
             f = io.popen("iw dev "..interface.." link")
@@ -148,14 +147,24 @@ local function worker(args)
             if popup_signal then
                 signal = "├Strength\t"..signal_level.."\n"
             end
+
+						metrics_down = ""
+						metrics_up = ""
+						if popup_metrics then
+							local tdown    = os.capture("ntotal "..interface.." d")
+							local tup    = os.capture("ntotal "..interface.." u")
+							metrics_down = "├DOWN:\t\t"..tdown.."\n"
+              metrics_up = "├UP:\t\t"..tup.."\n"
+						end
+
             msg =
                 "<span font_desc=\""..font.."\">"..
                 "┌["..interface.."]\n"..
                 "├ESSID:\t\t"..essid.."\n"..
                 "├IP:\t\t"..inet.."\n"..
                 "├BSSID\t\t"..mac.."\n"..
-                "├DOWN:\t\t"..tdown.."\n"..
-                "├UP:\t\t"..tup.."\n"..
+                ""..metrics_down..
+                ""..metrics_down..
                 ""..signal..
                 "└Bit rate:\t"..bitrate.."</span>"
 
