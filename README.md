@@ -7,11 +7,6 @@ First of all you should clone repository in your awesome config directory
 ```
 git clone https://github.com/pltanton/net_widgets.git ~/.config/awesome/net_widgets
 ```
-Then, install the helper script
-```
-cd ~/.config/awesome/net_widgets
-make install
-```
 Then, paste this in your 'rc.lua'
 ```Lua
 local net_widgets = require("net_widgets")
