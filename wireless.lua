@@ -14,19 +14,6 @@ function dbg(message)
                      text = message })
 end
 
--- { function lifted from https://stackoverflow.com/a/326715
-function os.capture(cmd, raw)
-  local f = assert(io.popen(cmd, 'r'))
-  local s = assert(f:read('*a'))
-  f:close()
-  if raw then return s end
-  s = string.gsub(s, '^%s+', '')
-  s = string.gsub(s, '%s+$', '')
-  s = string.gsub(s, '[\n\r]+', ' ')
-  return s
-end
--- }
-
 local function draw_signal(level)
     -- draw 32x32 for simplicity, imagebox will resize it using loseless transform
     local img = cairo.ImageSurface.create(cairo.Format.ARGB32, 32, 32)
@@ -60,6 +47,39 @@ local function draw_signal(level)
     return img
 end
 
+function net_stats(card,which)
+local prefix = {
+	[0] = "",
+	[1] = "K",
+	[2] = "M",
+	[3] = "G",
+	[4] = "T"
+}
+local function readAll(file)
+  local f = assert(io.open(file, "rb"))
+  local content = f:read()
+  f:close()
+  return content
+end
+local function round(num, numDecimalPlaces)
+  local mult = 10^(numDecimalPlaces or 0)
+  return math.floor(num * mult + 0.5) / mult
+end
+  if (which == "d") then
+    f = readAll("/sys/class/net/" .. card .. "/statistics/rx_bytes")
+  else if (which == "u") then
+    f = readAll("/sys/class/net/" .. card .. "/statistics/tx_bytes")
+    end
+  end
+	local count = 0
+	local stat = tonumber(f)
+	while (stat > 999) do
+		stat = (stat / 1024)
+		count = count + 1
+	end
+	result = (round(stat,2) .." "..prefix[count].."B")
+	return result
+end
 
 local wireless = {}
 local function worker(args)
@@ -78,7 +98,7 @@ local function worker(args)
     local onclick       = args.onclick
     local widget        = args.widget == nil and wibox.layout.fixed.horizontal() or args.widget == false and nil or args.widget
     local indent        = args.indent or 3
-    local popup_metrics		    = args.popup_metrics or false
+    local popup_metrics	= args.popup_metrics or false
 
     local net_icon = wibox.widget.imagebox(draw_signal(0))
     local net_text = wibox.widget.textbox()
@@ -151,8 +171,8 @@ local function worker(args)
 						metrics_down = ""
 						metrics_up = ""
 						if popup_metrics then
-							local tdown    = os.capture("ntotal "..interface.." d")
-							local tup    = os.capture("ntotal "..interface.." u")
+							local tdown    = net_stats(interface,"d")
+							local tup    = net_stats(interface,"u")
 							metrics_down = "├DOWN:\t\t"..tdown.."\n"
               metrics_up = "├UP:\t\t"..tup.."\n"
 						end
