@@ -48,37 +48,42 @@ local function draw_signal(level)
 end
 
 function net_stats(card,which)
-local prefix = {
-	[0] = "",
-	[1] = "K",
-	[2] = "M",
-	[3] = "G",
-	[4] = "T"
-}
-local function readAll(file)
-  local f = assert(io.open(file, "rb"))
-  local content = f:read()
-  f:close()
-  return content
-end
-local function round(num, numDecimalPlaces)
-  local mult = 10^(numDecimalPlaces or 0)
-  return math.floor(num * mult + 0.5) / mult
-end
-  if (which == "d") then
-    f = readAll("/sys/class/net/" .. card .. "/statistics/rx_bytes")
-  else if (which == "u") then
-    f = readAll("/sys/class/net/" .. card .. "/statistics/tx_bytes")
+    local prefix = {
+        [0] = "",
+        [1] = "K",
+        [2] = "M",
+        [3] = "G",
+        [4] = "T"
+    }
+
+    local function readAll(file)
+        local f = assert(io.open(file, "rb"))
+        local content = f:read()
+         f:close()
+        return content
     end
-  end
-	local count = 0
-	local stat = tonumber(f)
-	while (stat > 999) do
-		stat = (stat / 1024)
-		count = count + 1
-	end
-	result = (round(stat,2) .." "..prefix[count].."B")
-	return result
+
+    local function round(num, numDecimalPlaces)
+        local mult = 10^(numDecimalPlaces or 0)
+        return math.floor(num * mult + 0.5) / mult
+    end
+
+    if (which == "d") then
+        f = readAll("/sys/class/net/" .. card .. "/statistics/rx_bytes")
+    else if (which == "u") then
+        f = readAll("/sys/class/net/" .. card .. "/statistics/tx_bytes")
+        end
+    end
+
+    local count = 0
+    local stat = tonumber(f)
+    while (stat > 1024) do
+        stat = (stat / 1024)
+        count = count + 1
+    end
+
+    result = (round(stat,2) .." "..prefix[count].."B")
+    return result
 end
 
 local wireless = {}
@@ -168,14 +173,14 @@ local function worker(args)
                 signal = "├Strength\t"..signal_level.."\n"
             end
 
-						metrics_down = ""
-						metrics_up = ""
-						if popup_metrics then
-							local tdown    = net_stats(interface,"d")
-							local tup    = net_stats(interface,"u")
-							metrics_down = "├DOWN:\t\t"..tdown.."\n"
-              metrics_up = "├UP:\t\t"..tup.."\n"
-						end
+            metrics_down = ""
+            metrics_up = ""
+            if popup_metrics then
+                local tdown    = net_stats(interface,"d")
+                local tup    = net_stats(interface,"u")
+                metrics_down = "├DOWN:\t\t"..tdown.."\n"
+                metrics_up = "├UP:\t\t"..tup.."\n"
+            end
 
             msg =
                 "<span font_desc=\""..font.."\">"..
