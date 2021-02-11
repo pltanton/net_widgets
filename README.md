@@ -68,8 +68,8 @@ Set `popup_signal=true`.
 Just set `onclick` argument, for example
 
 ```Lua
-net_wireless = net_widgets.wireless({interface   = "wlp3s0", 
-                                     onclick     = terminal .. " -e sudo wifi-menu" }) 
+net_wireless = net_widgets.wireless({interface   = "wlp3s0",
+                                     onclick     = terminal .. " -e sudo wifi-menu" })
 ```
 
 
@@ -77,32 +77,32 @@ net_wireless = net_widgets.wireless({interface   = "wlp3s0",
 Just set `widget` argument as `false`  to get table or some widget layout to change default layout, for example
 
 ```Lua
-net_wireless = net_widgets.wireless({interface   = "wlp3s0", 
-                                     widget = false, }) 
+net_wireless = net_widgets.wireless({interface   = "wlp3s0",
+                                     widget = false, })
 ```
 
 or
 
 ```Lua
-net_wireless = net_widgets.wireless({interface   = "wlp3s0", 
-                                     widget = wibox.layout.fixed.vertical(), }) 
+net_wireless = net_widgets.wireless({interface   = "wlp3s0",
+                                     widget = wibox.layout.fixed.vertical(), })
 ```
 
 
 By default `widget = wibox.layout.fixed.horizontal()`
 
 #### Set indent in wireless textbox
-Just set `indent` 
+Just set `indent`
 ```Lua
-net_wireless = net_widgets.wireless({interface   = "wlp3s0", 
-                                     indent = 0, }) 
+net_wireless = net_widgets.wireless({interface   = "wlp3s0",
+                                     indent = 0, })
 ```
 
 or
 
 ```Lua
-net_wireless = net_widgets.wireless({interface   = "wlp3s0", 
-                                     indent = 5, }) 
+net_wireless = net_widgets.wireless({interface   = "wlp3s0",
+                                     indent = 5, })
 ```
 
 
